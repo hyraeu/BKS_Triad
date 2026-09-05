@@ -1,19 +1,13 @@
 import { useState } from "react";
 
-import { Eye, EyeOff, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import Field from "./Field";
-
-import PasswordStrength from "./PasswordStrength";
 
 import { useAuth } from "../contexts/AuthContext";
 
 export default function AuthPage() {
   const [mode, setMode] = useState("login");
-
-  const [showPassword, setShowPassword] = useState(false);
-
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -21,8 +15,6 @@ export default function AuthPage() {
     email: "",
 
     password: "",
-
-    confirmPassword: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -54,22 +46,12 @@ export default function AuthPage() {
 
     if (!form.email.trim()) {
       next.email = "Email is required.";
-    } else if (!/^\S+@\S+\.\S+$/.test(form.email)) {
-      next.email = "Please enter a valid email address.";
     }
 
     if (!form.password) {
       next.password = "Password is required.";
     } else if (isSignup && form.password.length < 8) {
       next.password = "Password must be at least 8 characters.";
-    }
-
-    if (isSignup) {
-      if (!form.confirmPassword) {
-        next.confirmPassword = "Please confirm your password.";
-      } else if (form.password !== form.confirmPassword) {
-        next.confirmPassword = "Passwords do not match.";
-      }
     }
 
     setErrors(next);
@@ -105,13 +87,13 @@ export default function AuthPage() {
     if (result.success) {
       setSubmitMessage(
         isSignup
-          ? "Account created successfully! Welcome to Marginal."
-          : "Welcome back! You've been signed in.",
+          ? "Account created successfully!"
+          : "You've been signed in.",
       );
 
       // Reset form after successful submission
 
-      setForm({ name: "", email: "", password: "", confirmPassword: "" });
+      setForm({ name: "", email: "", password: "" });
 
       // Auto-clear message after 3 seconds
 
@@ -133,7 +115,7 @@ export default function AuthPage() {
     // Reset form fields that aren't shared between modes
 
     if (next === "login") {
-      setForm((f) => ({ ...f, name: "", confirmPassword: "" }));
+      setForm((f) => ({ ...f, name: "" }));
     }
   };
 
@@ -219,43 +201,29 @@ export default function AuthPage() {
                 Password {isSignup && <span className="text-[#B0473F]">*</span>}
               </label>
 
-              <div className="relative">
-                <input
-                  id="password"
+              <input
+                id="password"
 
-                  type={showPassword ? "text" : "password"}
+                type="password"
 
-                  value={form.password}
+                value={form.password}
 
-                  onChange={handleChange("password")}
+                onChange={handleChange("password")}
 
-                  placeholder={isSignup ? "At least 8 characters" : "••••••••"}
+                placeholder={isSignup ? "At least 8 characters" : "••••••••"}
 
-                  autoComplete={isSignup ? "new-password" : "current-password"}
+                autoComplete={isSignup ? "new-password" : "current-password"}
 
-                  aria-invalid={!!errors.password}
+                aria-invalid={!!errors.password}
 
-                  aria-describedby={
-                    errors.password ? "password-error" : undefined
-                  }
+                aria-describedby={
+                  errors.password ? "password-error" : undefined
+                }
 
-                  className={`w-full bg-transparent border rounded-none px-0 py-2 pr-9 text-[15px] text-[#1B1F23] placeholder-[#B7B0A2] focus:outline-none focus:border-[#3F4B8C] transition-colors ${
-                    errors.password ? "border-[#B0473F]" : "border-[#DDD6C8]"
-                  }`}
-                />
-
-                <button
-                  type="button"
-
-                  onClick={() => setShowPassword((s) => !s)}
-
-                  className="absolute right-0 top-1/2 -translate-y-1/2 text-[#9A9488] hover:text-[#1B1F23]"
-
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-                </button>
-              </div>
+                className={`w-full bg-transparent border rounded-none px-0 py-2 text-[15px] text-[#1B1F23] placeholder-[#B7B0A2] focus:outline-none focus:border-[#3F4B8C] transition-colors ${
+                  errors.password ? "border-[#B0473F]" : "border-[#DDD6C8]"
+                }`}
+              />
 
               {errors.password && (
                 <p
@@ -268,97 +236,7 @@ export default function AuthPage() {
                   {errors.password}
                 </p>
               )}
-
-              {/* Password strength indicator - Stretch Goal #2 */}
-
-              {isSignup && form.password && (
-                <PasswordStrength password={form.password} />
-              )}
-
-              {!isSignup && (
-                <button
-                  type="button"
-
-                  className="mt-2 text-xs text-[#3F4B8C] hover:underline focus:outline-none focus:ring-2 focus:ring-[#3F4B8C] rounded"
-                >
-                  Forgot password?
-                </button>
-              )}
             </div>
-
-            {isSignup && (
-              <div>
-                <label
-                  htmlFor="confirmPassword"
-
-                  className="block text-xs uppercase tracking-wide text-[#7A7468] mb-1.5"
-                >
-                  Confirm Password <span className="text-[#B0473F]">*</span>
-                </label>
-
-                <div className="relative">
-                  <input
-                    id="confirmPassword"
-
-                    type={showConfirmPassword ? "text" : "password"}
-
-                    value={form.confirmPassword}
-
-                    onChange={handleChange("confirmPassword")}
-
-                    placeholder="Confirm your password"
-
-                    autoComplete="new-password"
-
-                    aria-invalid={!!errors.confirmPassword}
-
-                    aria-describedby={
-                      errors.confirmPassword
-                        ? "confirmPassword-error"
-                        : undefined
-                    }
-
-                    className={`w-full bg-transparent border rounded-none px-0 py-2 pr-9 text-[15px] text-[#1B1F23] placeholder-[#B7B0A2] focus:outline-none focus:border-[#3F4B8C] transition-colors ${
-                      errors.confirmPassword
-                        ? "border-[#B0473F]"
-                        : "border-[#DDD6C8]"
-                    }`}
-                  />
-
-                  <button
-                    type="button"
-
-                    onClick={() => setShowConfirmPassword((s) => !s)}
-
-                    className="absolute right-0 top-1/2 -translate-y-1/2 text-[#9A9488] hover:text-[#1B1F23]"
-
-                    aria-label={
-                      showConfirmPassword
-                        ? "Hide confirmation password"
-                        : "Show confirmation password"
-                    }
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff size={17} />
-                    ) : (
-                      <Eye size={17} />
-                    )}
-                  </button>
-                </div>
-
-                {errors.confirmPassword && (
-                  <p
-                    id="confirmPassword-error"
-
-                    className="mt-1.5 text-xs text-[#B0473F] error-message"
-
-                    role="alert"
-                  >
-                    {errors.confirmPassword}
-                  </p>
-                )}
-              </div>
-            )}
 
             <button
               type="submit"
