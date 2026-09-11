@@ -1,6 +1,4 @@
 import { createContext, useContext, useState, useEffect } from "react";
-
-// Mock user database for stretch goal #4
 const MOCK_USERS = [
   {
     id: 1,
@@ -23,19 +21,16 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check for existing session on mount
   useEffect(() => {
     const savedUser = localStorage.getItem("auth_user");
 
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
-
     setLoading(false);
   }, []);
 
   const login = (email, password) => {
-    // Mock authentication check
 
     const foundUser = MOCK_USERS.find(
       (u) => u.email === email && u.password === password,
@@ -55,7 +50,6 @@ export function AuthProvider({ children }) {
   };
 
   const signup = (name, email, password) => {
-    // Check if user already exists
     const existingUser = MOCK_USERS.find((u) => u.email === email);
 
     if (existingUser) {
@@ -64,8 +58,6 @@ export function AuthProvider({ children }) {
         error: "An account with this email already exists.",
       };
     }
-
-    // Create new user (in a real app, this would be an API call)
     const newUser = {
       id: MOCK_USERS.length + 1,
       name,
@@ -97,7 +89,6 @@ export function AuthProvider({ children }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
