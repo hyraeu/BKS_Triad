@@ -23,16 +23,13 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-
       if (!res.ok) {
         return { success: false, error: data.error || "Login failed." };
       }
-
       const loggedInUser = { name: data.name, email: data.email };
       setUser(loggedInUser);
       localStorage.setItem("auth_user", JSON.stringify(loggedInUser));
       return { success: true, user: loggedInUser };
-
     } catch (err) {
       return { success: false, error: "Could not connect to server. Make sure backend is running." };
     }
@@ -46,16 +43,13 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({ name, email, password }),
       });
       const data = await res.json();
-
       if (!res.ok) {
         return { success: false, error: data.error || "Signup failed." };
       }
-
       const newUser = { name, email };
       setUser(newUser);
       localStorage.setItem("auth_user", JSON.stringify(newUser));
       return { success: true, user: newUser };
-
     } catch (err) {
       return { success: false, error: "Could not connect to server. Make sure backend is running." };
     }

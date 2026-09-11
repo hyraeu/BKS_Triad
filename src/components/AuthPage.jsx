@@ -4,7 +4,6 @@ import Field from "./Field";
 import PasswordStrength from "./PasswordStrength";
 import { useAuth } from "../contexts/AuthContext";
 
-
 export default function AuthPage() {
   const [mode, setMode] = useState("login");
   const [showPassword, setShowPassword] = useState(false);
@@ -21,12 +20,12 @@ export default function AuthPage() {
   const [authError, setAuthError] = useState(null);
   const { login, signup } = useAuth();
   const isSignup = mode === "signup";
+
   const handleChange = (field) => (e) => {
     setForm((f) => ({ ...f, [field]: e.target.value }));
     setErrors((er) => ({ ...er, [field]: null }));
     setAuthError(null);
   };
-
 
   const validate = () => {
     const next = {};
@@ -54,7 +53,7 @@ export default function AuthPage() {
     return Object.keys(next).length === 0;
   };
 
- const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setAuthError(null);
     if (!validate()) return;
@@ -86,8 +85,6 @@ export default function AuthPage() {
     setErrors({});
     setAuthError(null);
     setSubmitMessage(null);
-
-
     if (next === "login") {
       setForm((f) => ({ ...f, name: "", confirmPassword: "" }));
     }
@@ -97,21 +94,24 @@ export default function AuthPage() {
     <div className="min-h-screen w-full flex items-center justify-center bg-[#F6F2EA]">
       <div className="flex-1 flex items-center justify-center px-6 py-16">
         <div className="w-full max-w-sm">
-          <h2 className="text-2xl mb-6 text-[#1B1F23] text-center"
+          <h2
+            className="text-2xl mb-6 text-[#1B1F23] text-center"
             style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
           >
             {isSignup ? "Register" : "Login"}
           </h2>
           {authError && (
             <div
-              className="mb-6 p-3 bg-[#B0473F]/10 border border-[#B0473F] text-[#B0473F] text-sm rounded" role="alert"
+              className="mb-6 p-3 bg-[#B0473F]/10 border border-[#B0473F] text-[#B0473F] text-sm rounded"
+              role="alert"
             >
               {authError}
             </div>
           )}
           {submitMessage && (
             <div
-              className="mb-6 p-3 bg-[#3F4B8C]/10 border border-[#3F4B8C] text-[#3F4B8C] text-sm rounded"   role="status"
+              className="mb-6 p-3 bg-[#3F4B8C]/10 border border-[#3F4B8C] text-[#3F4B8C] text-sm rounded"
+              role="status"
             >
               {submitMessage}
             </div>
@@ -144,7 +144,8 @@ export default function AuthPage() {
                 htmlFor="password"
                 className="block text-xs uppercase tracking-wide text-[#7A7468] mb-1.5"
               >
-                Password {isSignup && <span className="text-[#B0473F]">*</span>}
+                Password{" "}
+                {isSignup && <span className="text-[#B0473F]">*</span>}
               </label>
               <div className="relative">
                 <input
@@ -174,7 +175,8 @@ export default function AuthPage() {
               {errors.password && (
                 <p
                   id="password-error"
-                  className="mt-1.5 text-xs text-[#B0473F] error-message"role="alert"
+                  className="mt-1.5 text-xs text-[#B0473F] error-message"
+                  role="alert"
                 >
                   {errors.password}
                 </p>
@@ -197,7 +199,8 @@ export default function AuthPage() {
                   htmlFor="confirmPassword"
                   className="block text-xs uppercase tracking-wide text-[#7A7468] mb-1.5"
                 >
-                  Confirm Password <span className="text-[#B0473F]">*</span>
+                  Confirm Password{" "}
+                  <span className="text-[#B0473F]">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -283,4 +286,3 @@ export default function AuthPage() {
     </div>
   );
 }
-
