@@ -184,14 +184,6 @@ export default function AuthPage() {
               {isSignup && form.password && (
                 <PasswordStrength password={form.password} />
               )}
-              {!isSignup && (
-                <button
-                  type="button"
-                  className="mt-2 text-xs text-[#3F4B8C] hover:underline focus:outline-none focus:ring-2 focus:ring-[#3F4B8C] rounded"
-                >
-                  Forgot password?
-                </button>
-              )}
             </div>
             {isSignup && (
               <div>
