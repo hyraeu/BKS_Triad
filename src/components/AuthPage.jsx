@@ -8,6 +8,7 @@ export default function AuthPage() {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authError, setAuthError] = useState(null);
+  const [submitMessage, setSubmitMessage] = useState(null);
   const { login, signup } = useAuth();
   const isSignup = mode === "signup";
   const handleChange = (field) => (e) => {
@@ -48,7 +49,13 @@ export default function AuthPage() {
     }
     setIsSubmitting(false);
     if (result.success) {
+      setSubmitMessage(
+        isSignup
+          ? "Account created successfully!"
+          : "You've been signed in.",
+      );
       setForm({ name: "", email: "", password: "" });
+      setTimeout(() => setSubmitMessage(null), 3000);
     } else {
       setAuthError(result.error);
     }
@@ -58,6 +65,7 @@ export default function AuthPage() {
     setMode(next);
     setErrors({});
     setAuthError(null);
+    setSubmitMessage(null);
 
     if (next === "login") {
       setForm((f) => ({ ...f, name: "" }));
@@ -72,6 +80,13 @@ export default function AuthPage() {
             style={{ fontFamily: "Georgia, 'Times New Roman', serif" }} >
             {isSignup ? "Register" : "Login"}
           </h2>
+          {submitMessage && (
+            <div
+              className="mb-6 p-3 bg-[#3F4B8C]/10 border border-[#3F4B8C] text-[#3F4B8C] text-sm rounded"
+              role="status" >
+              {submitMessage}
+            </div>
+          )}
           {authError && (
             <div
               className="mb-6 p-3 bg-[#B0473F]/10 border border-[#B0473F] text-[#B0473F] text-sm rounded"
@@ -87,7 +102,7 @@ export default function AuthPage() {
                 value={form.name}
                 onChange={handleChange("name")}
                 error={errors.name}
-                placeholder="Jamie Rivera"
+                placeholder="Enter your name"
                 autoComplete="name"
                 required
               />
