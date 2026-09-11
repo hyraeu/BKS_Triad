@@ -48,13 +48,7 @@ export default function AuthPage() {
     }
     setIsSubmitting(false);
     if (result.success) {
-      setSubmitMessage(
-        isSignup
-          ? "Account created successfully!"
-          : "You've been signed in.",
-      );
       setForm({ name: "", email: "", password: "" });
-      setTimeout(() => setSubmitMessage(null), 3000);
     } else {
       setAuthError(result.error);
     }
@@ -64,7 +58,6 @@ export default function AuthPage() {
     setMode(next);
     setErrors({});
     setAuthError(null);
-    setSubmitMessage(null);
 
     if (next === "login") {
       setForm((f) => ({ ...f, name: "" }));
@@ -155,10 +148,7 @@ export default function AuthPage() {
                   {isSignup ? "Creating account..." : "Signing in..."}
                 </>
               ) : (
-                <>
-                  {isSignup ? "Create account" : "Sign in"}
-                  <ArrowRight size={16} />
-                </>
+                isSignup ? "Create account" : "Sign in"
               )}
             </button>
           </form>
