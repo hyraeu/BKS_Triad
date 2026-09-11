@@ -1,8 +1,3 @@
-/**
- * Reusable form field component
- * Demonstrates component extraction and reusability
- */
-
 export default function Field({
   label,
   error,
@@ -43,7 +38,6 @@ export default function Field({
             }`}
         {...props}
       />
-
       {error && (
         <p
           id={`${fieldId}-error`}

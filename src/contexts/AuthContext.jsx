@@ -1,84 +1,64 @@
 import { createContext, useContext, useState, useEffect } from "react";
 
-// Mock user database for stretch goal #4
-const MOCK_USERS = [
-  {
-    id: 1,
-    name: "Test User",
-    email: "test@example.com",
-    password: "Password123!",
-  },
-
-  {
-    id: 2,
-    name: "Jamie Rivera",
-    email: "jamie@marginal.com",
-    password: "SecurePass456!",
-  },
-];
-
+const API_URL = "http://localhost:4000/api";
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check for existing session on mount
   useEffect(() => {
     const savedUser = localStorage.getItem("auth_user");
-
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
-
     setLoading(false);
   }, []);
 
-  const login = (email, password) => {
-    // Mock authentication check
+  const login = async (email, password) => {
+    try {
+      const res = await fetch(`${API_URL}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
 
-    const foundUser = MOCK_USERS.find(
-      (u) => u.email === email && u.password === password,
-    );
+      if (!res.ok) {
+        return { success: false, error: data.error || "Login failed." };
+      }
 
-    if (foundUser) {
-      const { password: _, ...userWithoutPassword } = foundUser;
-      setUser(userWithoutPassword);
-      localStorage.setItem("auth_user", JSON.stringify(userWithoutPassword));
-      return { success: true, user: userWithoutPassword };
+      const loggedInUser = { name: data.name, email: data.email };
+      setUser(loggedInUser);
+      localStorage.setItem("auth_user", JSON.stringify(loggedInUser));
+      return { success: true, user: loggedInUser };
+
+    } catch (err) {
+      return { success: false, error: "Could not connect to server. Make sure backend is running." };
     }
-
-    return {
-      success: false,
-      error: "Invalid email or password. Please try again.",
-    };
   };
 
-  const signup = (name, email, password) => {
-    // Check if user already exists
-    const existingUser = MOCK_USERS.find((u) => u.email === email);
+  const signup = async (name, email, password) => {
+    try {
+      const res = await fetch(`${API_URL}/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+      const data = await res.json();
 
-    if (existingUser) {
-      return {
-        success: false,
-        error: "An account with this email already exists.",
-      };
+      if (!res.ok) {
+        return { success: false, error: data.error || "Signup failed." };
+      }
+
+      const newUser = { name, email };
+      setUser(newUser);
+      localStorage.setItem("auth_user", JSON.stringify(newUser));
+      return { success: true, user: newUser };
+
+    } catch (err) {
+      return { success: false, error: "Could not connect to server. Make sure backend is running." };
     }
-
-    // Create new user (in a real app, this would be an API call)
-    const newUser = {
-      id: MOCK_USERS.length + 1,
-      name,
-      email,
-      password,
-    };
-
-    MOCK_USERS.push(newUser);
-
-    const { password: _, ...userWithoutPassword } = newUser;
-    setUser(userWithoutPassword);
-    localStorage.setItem("auth_user", JSON.stringify(userWithoutPassword));
-    return { success: true, user: userWithoutPassword };
   };
 
   const logout = () => {
