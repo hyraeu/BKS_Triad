@@ -47,6 +47,10 @@ export default function AuthPage() {
 
     if (isSignup && !form.name.trim()) {
       next.name = "Please enter your name.";
+    } else if (isSignup && !/^[a-zA-Z\s]+$/.test(form.name)) {
+      next.name = "Name can only contain letters.";
+    } else if (isSignup && form.name.length > 40) {
+      next.name = "Name must be under 40 characters.";
     }
 
     if (!form.email.trim()) {
@@ -59,6 +63,8 @@ export default function AuthPage() {
       next.password = "Password is required.";
     } else if (isSignup && form.password.length < 8) {
       next.password = "Password must be at least 8 characters.";
+    } else if (isSignup && form.password.length > 16) {
+      next.password = "Password must be under 16 characters.";
     }
 
     if (isSignup) {
@@ -161,16 +167,23 @@ export default function AuthPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} noValidate className="space-y-5">
+          <form
+            onSubmit={handleSubmit}
+            noValidate
+            autoComplete="off"
+            className="space-y-5"
+          >
             {isSignup && (
               <Field
                 label="Name"
                 type="text"
+                name="fullname_field"
                 value={form.name}
                 onChange={handleChange("name")}
                 error={errors.name}
                 placeholder="Enter your name"
-                autoComplete="name"
+                autoComplete="off"
+                maxLength={40}
                 required
               />
             )}
@@ -178,11 +191,12 @@ export default function AuthPage() {
             <Field
               label="Email"
               type="email"
+              name="email_field"
               value={form.email}
               onChange={handleChange("email")}
               error={errors.email}
               placeholder="you@example.com"
-              autoComplete="email"
+              autoComplete="off"
               required
             />
 
@@ -197,11 +211,14 @@ export default function AuthPage() {
               <div className="relative">
                 <input
                   id="password"
+                  name="password_field"
                   type={showPassword ? "text" : "password"}
                   value={form.password}
                   onChange={handleChange("password")}
-                  placeholder={isSignup ? "At least 8 characters" : "••••••••"}
-                  autoComplete={isSignup ? "new-password" : "current-password"}
+                  placeholder={isSignup ? "8-16 characters" : "••••••••"}
+                  autoComplete="new-password"
+                  minLength={8}
+                  maxLength={16}
                   aria-invalid={!!errors.password}
                   aria-describedby={
                     errors.password ? "password-error" : undefined
@@ -235,14 +252,6 @@ export default function AuthPage() {
                 <PasswordStrength password={form.password} />
               )}
 
-              {!isSignup && (
-                <button
-                  type="button"
-                  className="mt-2 text-xs text-[#3F4B8C] hover:underline focus:outline-none focus:ring-2 focus:ring-[#3F4B8C] rounded"
-                >
-                  Forgot password?
-                </button>
-              )}
             </div>
 
             {isSignup && (
@@ -257,11 +266,14 @@ export default function AuthPage() {
                 <div className="relative">
                   <input
                     id="confirmPassword"
+                    name="confirm_password_field"
                     type={showConfirmPassword ? "text" : "password"}
                     value={form.confirmPassword}
                     onChange={handleChange("confirmPassword")}
                     placeholder="Confirm your password"
                     autoComplete="new-password"
+                    minLength={8}
+                    maxLength={16}
                     aria-invalid={!!errors.confirmPassword}
                     aria-describedby={
                       errors.confirmPassword
