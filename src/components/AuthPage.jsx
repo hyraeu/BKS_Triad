@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { useState, useRef } from "react";
+import { Eye, EyeOff, X } from "lucide-react";
 import Field from "./Field";
 import PasswordStrength from "./PasswordStrength";
 import { useAuth } from "../contexts/AuthContext";
@@ -20,11 +20,26 @@ export default function AuthPage() {
   const [authError, setAuthError] = useState(null);
   const { login, signup } = useAuth();
   const isSignup = mode === "signup";
+  const authErrorTimer = useRef(null);
+
+  const clearAuthError = () => {
+    if (authErrorTimer.current) clearTimeout(authErrorTimer.current);
+    authErrorTimer.current = null;
+    setAuthError(null);
+  };
+
+  const showAuthError = (message) => {
+    if (authErrorTimer.current) clearTimeout(authErrorTimer.current);
+    setAuthError(message);
+    authErrorTimer.current = setTimeout(() => {
+      setAuthError(null);
+      authErrorTimer.current = null;
+    }, 5000);
+  };
 
   const handleChange = (field) => (e) => {
     setForm((f) => ({ ...f, [field]: e.target.value }));
     setErrors((er) => ({ ...er, [field]: null }));
-    setAuthError(null);
   };
 
   const validate = () => {
@@ -60,17 +75,23 @@ export default function AuthPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setAuthError(null);
+    clearAuthError();
     if (!validate()) return;
     setIsSubmitting(true);
     setSubmitMessage(null);
 
+    const startedAt = Date.now();
     let result;
 
     if (isSignup) {
       result = await signup(form.name, form.email, form.password);
     } else {
       result = await login(form.email, form.password);
+    }
+
+    const elapsed = Date.now() - startedAt;
+    if (elapsed < 1500) {
+      await new Promise((resolve) => setTimeout(resolve, 1500 - elapsed));
     }
 
     setIsSubmitting(false);
@@ -86,14 +107,15 @@ export default function AuthPage() {
 
       setTimeout(() => setSubmitMessage(null), 3000);
     } else {
-      setAuthError(result.error);
+      showAuthError(result.error);
     }
+    await new Promise((resolve) => setTimeout(resolve, 1500));
   };
 
   const switchMode = (next) => {
     setMode(next);
     setErrors({});
-    setAuthError(null);
+    clearAuthError();
     setSubmitMessage(null);
 
     if (next === "login") {
@@ -115,10 +137,18 @@ export default function AuthPage() {
 
           {authError && (
             <div
-              className="mb-6 p-3 bg-[#B0473F]/10 border border-[#B0473F] text-[#B0473F] text-sm rounded"
+              className="relative mb-6 p-3 pr-9 bg-[#B0473F]/10 border border-[#B0473F] text-[#B0473F] text-sm rounded"
               role="alert"
             >
               {authError}
+              <button
+                type="button"
+                onClick={clearAuthError}
+                aria-label="Dismiss error"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[#B0473F] hover:text-[#1B1F23]"
+              >
+                <X size={16} />
+              </button>
             </div>
           )}
 
