@@ -78,8 +78,8 @@ export default function AuthPage() {
     if (result.success) {
       setSubmitMessage(
         isSignup
-          ? "Account created successfully! Welcome to Marginal."
-          : "Welcome back! You've been signed in.",
+          ? "Account created successfully!"
+          : "You've been signed in.",
       );
 
       setForm({ name: "", email: "", password: "", confirmPassword: "" });
