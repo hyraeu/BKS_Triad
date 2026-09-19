@@ -29,19 +29,23 @@ export default function AuthPage() {
 
   const validate = () => {
     const next = {};
+
     if (isSignup && !form.name.trim()) {
       next.name = "Please enter your name.";
     }
+
     if (!form.email.trim()) {
       next.email = "Email is required.";
     } else if (!/^\S+@\S+\.\S+$/.test(form.email)) {
       next.email = "Please enter a valid email address.";
     }
+
     if (!form.password) {
       next.password = "Password is required.";
     } else if (isSignup && form.password.length < 8) {
       next.password = "Password must be at least 8 characters.";
     }
+
     if (isSignup) {
       if (!form.confirmPassword) {
         next.confirmPassword = "Please confirm your password.";
@@ -49,6 +53,7 @@ export default function AuthPage() {
         next.confirmPassword = "Passwords do not match.";
       }
     }
+
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -61,19 +66,24 @@ export default function AuthPage() {
     setSubmitMessage(null);
 
     let result;
+
     if (isSignup) {
-      result = await signup(form.name, form.email, form.password);
+      result = signup(form.name, form.email, form.password);
     } else {
-      result = await login(form.email, form.password);
+      result = login(form.email, form.password);
     }
+
     setIsSubmitting(false);
+
     if (result.success) {
       setSubmitMessage(
         isSignup
-          ? "Account created successfully!"
-          : "Logged in successfully!",
+          ? "Account created successfully! Welcome to Marginal."
+          : "Welcome back! You've been signed in.",
       );
+
       setForm({ name: "", email: "", password: "", confirmPassword: "" });
+
       setTimeout(() => setSubmitMessage(null), 3000);
     } else {
       setAuthError(result.error);
@@ -85,6 +95,7 @@ export default function AuthPage() {
     setErrors({});
     setAuthError(null);
     setSubmitMessage(null);
+
     if (next === "login") {
       setForm((f) => ({ ...f, name: "", confirmPassword: "" }));
     }
@@ -92,6 +103,7 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#F6F2EA]">
+      {/* Form panel */}
       <div className="flex-1 flex items-center justify-center px-6 py-16">
         <div className="w-full max-w-sm">
           <h2
@@ -100,6 +112,7 @@ export default function AuthPage() {
           >
             {isSignup ? "Register" : "Login"}
           </h2>
+
           {authError && (
             <div
               className="mb-6 p-3 bg-[#B0473F]/10 border border-[#B0473F] text-[#B0473F] text-sm rounded"
@@ -108,6 +121,7 @@ export default function AuthPage() {
               {authError}
             </div>
           )}
+
           {submitMessage && (
             <div
               className="mb-6 p-3 bg-[#3F4B8C]/10 border border-[#3F4B8C] text-[#3F4B8C] text-sm rounded"
@@ -116,6 +130,7 @@ export default function AuthPage() {
               {submitMessage}
             </div>
           )}
+
           <form onSubmit={handleSubmit} noValidate className="space-y-5">
             {isSignup && (
               <Field
@@ -129,6 +144,7 @@ export default function AuthPage() {
                 required
               />
             )}
+
             <Field
               label="Email"
               type="email"
@@ -139,14 +155,15 @@ export default function AuthPage() {
               autoComplete="email"
               required
             />
+
             <div>
               <label
                 htmlFor="password"
                 className="block text-xs uppercase tracking-wide text-[#7A7468] mb-1.5"
               >
-                Password{" "}
-                {isSignup && <span className="text-[#B0473F]">*</span>}
+                Password <span className="text-[#B0473F]">*</span>
               </label>
+
               <div className="relative">
                 <input
                   id="password"
@@ -163,6 +180,7 @@ export default function AuthPage() {
                     errors.password ? "border-[#B0473F]" : "border-[#DDD6C8]"
                   }`}
                 />
+
                 <button
                   type="button"
                   onClick={() => setShowPassword((s) => !s)}
@@ -172,6 +190,7 @@ export default function AuthPage() {
                   {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                 </button>
               </div>
+
               {errors.password && (
                 <p
                   id="password-error"
@@ -181,19 +200,30 @@ export default function AuthPage() {
                   {errors.password}
                 </p>
               )}
+
               {isSignup && form.password && (
                 <PasswordStrength password={form.password} />
               )}
+
+              {!isSignup && (
+                <button
+                  type="button"
+                  className="mt-2 text-xs text-[#3F4B8C] hover:underline focus:outline-none focus:ring-2 focus:ring-[#3F4B8C] rounded"
+                >
+                  Forgot password?
+                </button>
+              )}
             </div>
+
             {isSignup && (
               <div>
                 <label
                   htmlFor="confirmPassword"
                   className="block text-xs uppercase tracking-wide text-[#7A7468] mb-1.5"
                 >
-                  Confirm Password{" "}
-                  <span className="text-[#B0473F]">*</span>
+                  Confirm Password <span className="text-[#B0473F]">*</span>
                 </label>
+
                 <div className="relative">
                   <input
                     id="confirmPassword"
@@ -214,6 +244,7 @@ export default function AuthPage() {
                         : "border-[#DDD6C8]"
                     }`}
                   />
+
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword((s) => !s)}
@@ -231,6 +262,7 @@ export default function AuthPage() {
                     )}
                   </button>
                 </div>
+
                 {errors.confirmPassword && (
                   <p
                     id="confirmPassword-error"
@@ -242,6 +274,7 @@ export default function AuthPage() {
                 )}
               </div>
             )}
+
             <button
               type="submit"
               disabled={isSubmitting}
@@ -252,17 +285,13 @@ export default function AuthPage() {
               }`}
             >
               {isSubmitting ? (
-                <>
-                  <span className="spinner" />
-                  {isSignup ? "Creating account..." : "Signing in..."}
-                </>
-              ) : isSignup ? (
-                "Create account"
+                isSignup ? "Creating account..." : "Signing in..."
               ) : (
-                "Sign in"
+                isSignup ? "Create account" : "Sign in"
               )}
             </button>
           </form>
+
           <p className="mt-8 text-center text-sm text-[#7A7468]">
             {isSignup ? "Already have an account?" : "Need an account?"}{" "}
             <button
