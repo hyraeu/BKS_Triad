@@ -14,9 +14,9 @@ export default function PasswordStrength({ password }) {
   };
 
   const getStrengthLabel = (s) => {
-    if (s <= 1) return { label: "Weak", color: "red" };
-    if (s <= 3) return { label: "Medium", color: "yellow" };
-    return { label: "Strong", color: "#90EE90" };
+    if (s <= 1) return { label: "Weak", color: "strength-value-weak" };
+    if (s <= 3) return { label: "Medium", color: "strength-value-medium" };
+    return { label: "Strong", color: "strength-value-strong" };
   };
 
   const score = getStrength(password);
@@ -28,21 +28,21 @@ export default function PasswordStrength({ password }) {
   };
 
   const getBarColor = (s) => {
-    if (s <= 1) return "bg-[#B0473F]";
-    if (s <= 3) return "bg-[#C9A45C]";
-    return "bg-[#3F4B8C]";
+    if (s <= 1) return "strength-weak";
+    if (s <= 3) return "strength-medium";
+    return "strength-strong";
   };
   return (
     <div className="mt-2 space-y-1">
       <div className="flex justify-between items-center">
-        <span className="text-xs text-[#7A7468]">Password strength</span>
+        <span className="strength-label">Password Strength</span>
         <span className={`text-xs font-medium ${strength.color}`}>
           {strength.label}
         </span>
       </div>
-      <div className="h-1 w-full bg-[#DDD6C8] rounded-full overflow-hidden">
+      <div className="strength-track">
         <div
-          className={`h-full ${getBarColor(score)} ${getWidth(score)} transition-all duration-300 rounded-full`}
+          className={`strength-bar ${getBarColor(score)} ${getWidth(score)}`}
           role="progressbar"
           aria-valuenow={score}
           aria-valuemin={0}
@@ -50,26 +50,23 @@ export default function PasswordStrength({ password }) {
           aria-label={`Password strength: ${strength.label}`}
         />
       </div>
-      <ul className="flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] text-[#7A7468]">
-        <li className={password.length >= 8 ? "text-[#3F4B8C]" : ""}>
+      <ul className="strength-checklist">
+        <li className={password.length >= 8 ? "strength-check-met" : ""}>
           {password.length >= 8 ? "✓" : "○"} 8+ characters
         </li>
         <li className={
             /[a-z]/.test(password) && /[A-Z]/.test(password)
-              ? "text-[#3F4B8C]" : ""}>
+              ? "strength-check-met" : ""}>
           {/[a-z]/.test(password) && /[A-Z]/.test(password) ? "✓" : "○"}{" "}
-          Uppercase & lowercase
+          Uppercase & Lowercase
         </li>
-        <li className={/\d/.test(password) ? "text-[#3F4B8C]" : ""}>
+        <li className={/\d/.test(password) ? "strength-check-met" : ""}>
           {/\d/.test(password) ? "✓" : "○"} Number
         </li>
-        <li className={/[^a-zA-Z0-9]/.test(password) ? "text-[#3F4B8C]" : ""}>
+        <li className={/[^a-zA-Z0-9]/.test(password) ? "strength-check-met" : ""}>
           {/[^a-zA-Z0-9]/.test(password) ? "✓" : "○"} Special character
         </li>
       </ul>
     </div>
   );
 }
-
-
-
