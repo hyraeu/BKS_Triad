@@ -80,9 +80,16 @@ Validation Rules
 - **Password minimum 8 characters (signup only)**
 - **Password and confirm password must match (signup only)**
 
+### Admin access
+
+- Sign up for the account `admin123@gmail.com`.
+- From the repository root, run `npm --prefix backend run admin:promote`.
+- Restart the backend, then sign in again. Admin roles are stored on the server; registration never grants an admin role.
+- Admin API access requires a server-managed, HTTP-only session cookie and an admin role. Sessions expire after eight hours and are cleared when the backend restarts.
+
 ## 🎯 Stretch Goals Implemented
 
-1. ✅ Persist login state using React Context - User session is saved in localStorage
+1. ✅ Persist login state using React Context - Session is verified by the backend using an HTTP-only cookie
 2. ✅ Password strength indicator - Visual feedback with weak/medium/strong labels
 3. ✅ Mock authentication - Hardcoded user database with credential checking
 4. ✅ Accessibility pass - ARIA attributes, focus states, error announcements
@@ -99,14 +106,11 @@ Successful Submission
 
 ## 🧪 Testing
 
-To test the mock authentication
+To test authentication
 
 Existing Users
 
-- **Email: test@example.com**
-- **Password: Password123!**
-- **Email: jamie@marginal.com**
-- **Password: SecurePass456!**
+- **Create an account through Sign Up, then use those credentials to sign in.**
 
 Signup
 

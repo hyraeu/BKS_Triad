@@ -18,7 +18,7 @@ export default function AuthPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState(null);
   const [authError, setAuthError] = useState(null);
-  const { login, signup } = useAuth();
+  const { login, signup, sessionError } = useAuth();
   const isSignup = mode === "signup";
   const authErrorTimer = useRef(null);
 
@@ -47,8 +47,8 @@ export default function AuthPage() {
 
     if (isSignup && !form.name.trim()) {
       next.name = "Please enter your name.";
-    } else if (isSignup && !/^[a-zA-Z\s]+$/.test(form.name)) {
-      next.name = "Name can only contain letters.";
+    } else if (isSignup && !/^[\p{L}\p{M}\s'‘’\-]+$/u.test(form.name)) {
+      next.name = "Name contains invalid characters.";
     } else if (isSignup && form.name.length > 40) {
       next.name = "Name must be under 40 characters.";
     }
@@ -105,8 +105,8 @@ export default function AuthPage() {
     if (result.success) {
       setSubmitMessage(
         isSignup
-          ? "Account created successfully!"
-          : "You've been signed in.",
+          ? "Account Created Successfully!"
+          : "You've Been Signed In.",
       );
 
       setForm({ name: "", email: "", password: "", confirmPassword: "" });
@@ -130,20 +130,23 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[#F6F2EA]">
-      {/* Form panel */}
-      <div className="flex-1 flex items-center justify-center px-6 py-16">
-        <div className="w-full max-w-sm">
+    <main className="auth-page">
+      <section className="auth-panel">
           <h2
-            className="text-2xl mb-6 text-[#1B1F23] text-center"
-            style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+            className="auth-title"
           >
-            {isSignup ? "Register" : "Login"}
+            {isSignup ? "Sign Up" : "Log In"}
           </h2>
+
+          {sessionError && (
+            <div className="auth-message auth-message-error" role="alert">
+              {sessionError}
+            </div>
+          )}
 
           {authError && (
             <div
-              className="relative mb-6 p-3 pr-9 bg-[#B0473F]/10 border border-[#B0473F] text-[#B0473F] text-sm rounded"
+              className="auth-message auth-message-error"
               role="alert"
             >
               {authError}
@@ -151,7 +154,7 @@ export default function AuthPage() {
                 type="button"
                 onClick={clearAuthError}
                 aria-label="Dismiss error"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-[#B0473F] hover:text-[#1B1F23]"
+                className="auth-dismiss"
               >
                 <X size={16} />
               </button>
@@ -160,7 +163,7 @@ export default function AuthPage() {
 
           {submitMessage && (
             <div
-              className="mb-6 p-3 bg-[#3F4B8C]/10 border border-[#3F4B8C] text-[#3F4B8C] text-sm rounded"
+              className="auth-message auth-message-success"
               role="status"
             >
               {submitMessage}
@@ -171,7 +174,7 @@ export default function AuthPage() {
             onSubmit={handleSubmit}
             noValidate
             autoComplete="off"
-            className="space-y-5"
+            className="auth-form"
           >
             {isSignup && (
               <Field
@@ -181,7 +184,6 @@ export default function AuthPage() {
                 value={form.name}
                 onChange={handleChange("name")}
                 error={errors.name}
-                placeholder="Enter your name"
                 autoComplete="off"
                 maxLength={40}
                 required
@@ -195,7 +197,6 @@ export default function AuthPage() {
               value={form.email}
               onChange={handleChange("email")}
               error={errors.email}
-              placeholder="you@example.com"
               autoComplete="off"
               required
             />
@@ -203,9 +204,9 @@ export default function AuthPage() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-xs uppercase tracking-wide text-[#7A7468] mb-1.5"
+                className="auth-label"
               >
-                Password <span className="text-[#B0473F]">*</span>
+                Password <span className="auth-required">*</span>
               </label>
 
               <div className="relative">
@@ -215,7 +216,7 @@ export default function AuthPage() {
                   type={showPassword ? "text" : "password"}
                   value={form.password}
                   onChange={handleChange("password")}
-                  placeholder={isSignup ? "8-16 characters" : "••••••••"}
+                  //placeholder={isSignup ? "8-16 Characters" : "••••••••"}
                   autoComplete="new-password"
                   minLength={8}
                   maxLength={16}
@@ -223,16 +224,16 @@ export default function AuthPage() {
                   aria-describedby={
                     errors.password ? "password-error" : undefined
                   }
-                  className={`w-full bg-transparent border rounded-none px-0 py-2 pr-9 text-[15px] text-[#1B1F23] placeholder-[#B7B0A2] focus:outline-none focus:border-[#3F4B8C] transition-colors ${
-                    errors.password ? "border-[#B0473F]" : "border-[#DDD6C8]"
+                  className={`auth-input auth-password-input ${
+                    errors.password ? "auth-input-error" : ""
                   }`}
                 />
 
                 <button
                   type="button"
                   onClick={() => setShowPassword((s) => !s)}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 text-[#9A9488] hover:text-[#1B1F23]"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="auth-password-toggle"
+                  aria-label={showPassword ? "Hide Password" : "Show Password"}
                 >
                   {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                 </button>
@@ -241,7 +242,7 @@ export default function AuthPage() {
               {errors.password && (
                 <p
                   id="password-error"
-                  className="mt-1.5 text-xs text-[#B0473F] error-message"
+                  className="auth-field-error"
                   role="alert"
                 >
                   {errors.password}
@@ -258,9 +259,9 @@ export default function AuthPage() {
               <div>
                 <label
                   htmlFor="confirmPassword"
-                  className="block text-xs uppercase tracking-wide text-[#7A7468] mb-1.5"
+                  className="auth-label"
                 >
-                  Confirm Password <span className="text-[#B0473F]">*</span>
+                  Confirm Password <span className="auth-required">*</span>
                 </label>
 
                 <div className="relative">
@@ -270,7 +271,6 @@ export default function AuthPage() {
                     type={showConfirmPassword ? "text" : "password"}
                     value={form.confirmPassword}
                     onChange={handleChange("confirmPassword")}
-                    placeholder="Confirm your password"
                     autoComplete="new-password"
                     minLength={8}
                     maxLength={16}
@@ -280,21 +280,19 @@ export default function AuthPage() {
                         ? "confirmPassword-error"
                         : undefined
                     }
-                    className={`w-full bg-transparent border rounded-none px-0 py-2 pr-9 text-[15px] text-[#1B1F23] placeholder-[#B7B0A2] focus:outline-none focus:border-[#3F4B8C] transition-colors ${
-                      errors.confirmPassword
-                        ? "border-[#B0473F]"
-                        : "border-[#DDD6C8]"
+                    className={`auth-input auth-password-input ${
+                      errors.confirmPassword ? "auth-input-error" : ""
                     }`}
                   />
 
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword((s) => !s)}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 text-[#9A9488] hover:text-[#1B1F23]"
+                    className="auth-password-toggle"
                     aria-label={
                       showConfirmPassword
-                        ? "Hide confirmation password"
-                        : "Show confirmation password"
+                        ? "Hide Confirmation Password"
+                        : "Show Confirmation Password"
                     }
                   >
                     {showConfirmPassword ? (
@@ -308,7 +306,7 @@ export default function AuthPage() {
                 {errors.confirmPassword && (
                   <p
                     id="confirmPassword-error"
-                    className="mt-1.5 text-xs text-[#B0473F] error-message"
+                    className="auth-field-error"
                     role="alert"
                   >
                     {errors.confirmPassword}
@@ -320,32 +318,31 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`w-full mt-2 bg-[#1B1F23] text-[#F6F2EA] text-[15px] py-3 flex items-center justify-center gap-2 transition-colors focus:outline-none focus:ring-2 focus:ring-[#3F4B8C] focus:ring-offset-2 focus:ring-offset-[#F6F2EA] ${
+              className={`auth-submit ${
                 isSubmitting
-                  ? "opacity-70 cursor-not-allowed"
-                  : "hover:bg-[#3F4B8C]"
+                  ? "auth-submit-disabled"
+                  : ""
               }`}
             >
               {isSubmitting ? (
-                isSignup ? "Creating account..." : "Signing in..."
+                isSignup ? "Creating Account..." : "Logging In..."
               ) : (
-                isSignup ? "Create account" : "Sign in"
+                isSignup ? "Create Account" : "Log In"
               )}
             </button>
           </form>
 
-          <p className="mt-8 text-center text-sm text-[#7A7468]">
-            {isSignup ? "Already have an account?" : "Need an account?"}{" "}
+          <p className="auth-switch-prompt">
+            {isSignup ? "Already Have An Account?" : "Need An Account?"}{" "}
             <button
               type="button"
               onClick={() => switchMode(isSignup ? "login" : "signup")}
-              className="text-[#3F4B8C] hover:underline focus:outline-none focus:ring-2 focus:ring-[#3F4B8C] rounded"
+              className="auth-link"
             >
-              {isSignup ? "Login" : "Register"}
+              {isSignup ? "Log In" : "Sign Up"}
             </button>
           </p>
-        </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
