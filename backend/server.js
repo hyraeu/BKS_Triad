@@ -19,6 +19,20 @@ const sessionCookieName = "bks_session";
 const sessionDurationMs = 8 * 60 * 60 * 1000;
 const sessions = new Map();
 
+const rememberDurationMs = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+const COMMON = ["12345678", "1234567890", "password", "qwerty123"];
+
+function validatePassword(pw, name, email) {
+  const low = pw.toLowerCase();
+  const user = email.split("@")[0].toLowerCase();
+  if (pw.length < 8 || pw.length > 16) return "Password Must Be Between 8 And 16 Characters.";
+  if (!/[A-Z\d]/.test(pw)) return "Password Must Have A Number Or Capital Letter.";
+  if (COMMON.includes(low)) return "Password Is Too Common.";
+  if (user.length >= 3 && low.includes(user)) return "Password Must Not Contain Your Email.";
+  return null;
+}
+
 app.use(
   cors({
     origin(origin, callback) {
@@ -73,18 +87,19 @@ function getCookies(req) {
   );
 }
 
-function cookieOptions() {
+function cookieOptions(maxAge = sessionDurationMs) {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
     path: "/api",
-    maxAge: sessionDurationMs,
+    maxAge,
   };
 }
 
-function createSession(res, user) {
+function createSession(res, user, rememberMe = false) {
   const now = Date.now();
+  const duration = rememberMe ? rememberDurationMs : sessionDurationMs;
   for (const [token, session] of sessions) {
     if (session.expiresAt <= now) sessions.delete(token);
   }
@@ -93,10 +108,10 @@ function createSession(res, user) {
   const sessionId = crypto.randomUUID();
   sessions.set(token, {
     email: user.email.toLowerCase(),
-    expiresAt: now + sessionDurationMs,
+    expiresAt: now + duration,
     sessionId,
   });
-  res.cookie(sessionCookieName, token, cookieOptions());
+  res.cookie(sessionCookieName, token, cookieOptions(duration));
   return sessionId;
 }
 
@@ -192,16 +207,20 @@ app.post("/api/signup", async (req, res) => {
   if (!emailRegex.test(normalizedEmail)) {
     return res.status(400).json({ error: "Invalid Email Format." });
   }
-  if (password.length < 8 || password.length > 16) {
-    return res
-      .status(400)
-      .json({ error: "Password Must Be Between 8 And 16 Characters." });
-  }
   if (
     normalizedName.length > 40 ||
     !/^[\p{L}\p{M}\s'‘’\-]+$/u.test(normalizedName)
   ) {
     return res.status(400).json({ error: "Invalid Name." });
+  }
+
+  const passwordError = validatePassword(
+    password,
+    normalizedName,
+    normalizedEmail,
+  );
+  if (passwordError) {
+    return res.status(400).json({ error: passwordError });
   }
 
   const existing = users.find(
@@ -230,7 +249,7 @@ app.post("/api/signup", async (req, res) => {
 });
 
 app.post("/api/login", loginLimiter, async (req, res) => {
-  const { email, password } = req.body || {};
+  const { email, password, rememberMe } = req.body || {};
   const normalizedEmail =
     typeof email === "string" ? email.trim().toLowerCase() : "";
   const user = users.find(
@@ -247,7 +266,7 @@ app.post("/api/login", loginLimiter, async (req, res) => {
     return res.status(401).json({ error: "Invalid Email Or Password." });
   }
 
-  const sessionId = createSession(res, user);
+  const sessionId = createSession(res, user, rememberMe === true);
   logEvent("LOGIN_SUCCESS", normalizedEmail, sessionId);
   return res.status(200).json({
     message: "Login Successful.",
@@ -308,6 +327,43 @@ app.put("/api/auth/me", requireAuth, (req, res) => {
 
   logEvent("ACCOUNT_UPDATED", normalizedEmail);
   return res.json({ user: safeUser(user) });
+});
+
+app.put("/api/auth/password", loginLimiter, requireAuth, async (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  if (typeof currentPassword !== "string" || typeof newPassword !== "string") {
+    return res.status(400).json({ error: "All Fields Are Required." });
+  }
+
+  const user = users.find(
+    (entry) => entry.email.toLowerCase() === req.user.email.toLowerCase(),
+  );
+  if (!user) return res.status(404).json({ error: "Account Not Found." });
+
+  const match = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!match) {
+    logEvent("PASSWORD_CHANGE_FAILED", user.email);
+    return res.status(401).json({ error: "Current Password Is Incorrect." });
+  }
+
+  const passwordError = validatePassword(newPassword, user.name, user.email);
+  if (passwordError) return res.status(400).json({ error: passwordError });
+  if (newPassword === currentPassword) {
+    return res.status(400).json({ error: "New Password Must Be Different." });
+  }
+
+  user.passwordHash = await bcrypt.hash(newPassword, 10);
+  saveJSON(USERS_FILE, users);
+
+  // log out all other devices
+  for (const [token, session] of sessions) {
+    if (session.email === user.email.toLowerCase() && token !== req.authToken) {
+      sessions.delete(token);
+    }
+  }
+
+  logEvent("PASSWORD_CHANGED", user.email);
+  return res.json({ message: "Password Updated." });
 });
 
 app.post("/api/logout", (req, res) => {
