@@ -329,43 +329,6 @@ app.put("/api/auth/me", requireAuth, (req, res) => {
   return res.json({ user: safeUser(user) });
 });
 
-app.put("/api/auth/password", loginLimiter, requireAuth, async (req, res) => {
-  const { currentPassword, newPassword } = req.body || {};
-  if (typeof currentPassword !== "string" || typeof newPassword !== "string") {
-    return res.status(400).json({ error: "All Fields Are Required." });
-  }
-
-  const user = users.find(
-    (entry) => entry.email.toLowerCase() === req.user.email.toLowerCase(),
-  );
-  if (!user) return res.status(404).json({ error: "Account Not Found." });
-
-  const match = await bcrypt.compare(currentPassword, user.passwordHash);
-  if (!match) {
-    logEvent("PASSWORD_CHANGE_FAILED", user.email);
-    return res.status(401).json({ error: "Current Password Is Incorrect." });
-  }
-
-  const passwordError = validatePassword(newPassword, user.name, user.email);
-  if (passwordError) return res.status(400).json({ error: passwordError });
-  if (newPassword === currentPassword) {
-    return res.status(400).json({ error: "New Password Must Be Different." });
-  }
-
-  user.passwordHash = await bcrypt.hash(newPassword, 10);
-  saveJSON(USERS_FILE, users);
-
-  // log out all other devices
-  for (const [token, session] of sessions) {
-    if (session.email === user.email.toLowerCase() && token !== req.authToken) {
-      sessions.delete(token);
-    }
-  }
-
-  logEvent("PASSWORD_CHANGED", user.email);
-  return res.json({ message: "Password Updated." });
-});
-
 app.post("/api/logout", (req, res) => {
   const token = getCookies(req)[sessionCookieName];
   const session = token && sessions.get(token);
