@@ -18,6 +18,7 @@ export default function AuthPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState(null);
   const [authError, setAuthError] = useState(null);
+  const [rememberMe, setRememberMe] = useState(false);
   const { login, signup, sessionError } = useAuth();
   const isSignup = mode === "signup";
   const authErrorTimer = useRef(null);
@@ -61,10 +62,28 @@ export default function AuthPage() {
 
     if (!form.password) {
       next.password = "Password is required.";
-    } else if (isSignup && form.password.length < 8) {
-      next.password = "Password must be at least 8 characters.";
-    } else if (isSignup && form.password.length > 16) {
-      next.password = "Password must be under 16 characters.";
+    } else if (
+      isSignup &&
+      (form.password.length < 8 || form.password.length > 16)
+    ) {
+      next.password = "Password must be 8 to 16 characters.";
+    } else if (isSignup && !/[A-Z\d]/.test(form.password)) {
+      next.password = "Use at least one number or capital letter.";
+    } else if (
+      isSignup &&
+      ["12345678", "1234567890", "password", "qwerty123"].includes(
+        form.password.toLowerCase(),
+      )
+    ) {
+      next.password = "Password is too common.";
+    } else if (
+      isSignup &&
+      form.email.split("@")[0].length >= 3 &&
+      form.password
+        .toLowerCase()
+        .includes(form.email.split("@")[0].toLowerCase())
+    ) {
+      next.password = "Password must not contain your email.";
     }
 
     if (isSignup) {
@@ -92,7 +111,7 @@ export default function AuthPage() {
     if (isSignup) {
       result = await signup(form.name, form.email, form.password);
     } else {
-      result = await login(form.email, form.password);
+      result = await login(form.email, form.password, rememberMe);
     }
 
     const elapsed = Date.now() - startedAt;
@@ -313,6 +332,17 @@ export default function AuthPage() {
                   </p>
                 )}
               </div>
+            )}
+
+            {!isSignup && (
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                />
+                Remember me
+              </label>
             )}
 
             <button
