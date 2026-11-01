@@ -41,14 +41,14 @@ export function AuthProvider({ children }) {
     return () => controller.abort();
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (email, password, rememberMe = false) => {
     setSessionError(null);
     try {
       const res = await fetch(`${API_URL}/login`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, rememberMe }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -111,6 +111,30 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const changePassword = async (currentPassword, newPassword) => {
+    try {
+      const response = await fetch(`${API_URL}/auth/password`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || "Could Not Change Password.",
+        };
+      }
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: "Could Not Connect To Server. Make Sure Backend Is Running.",
+      };
+    }
+  };
+
   const logout = async () => {
     const response = await fetch(`${API_URL}/logout`, {
       method: "POST",
@@ -130,6 +154,7 @@ export function AuthProvider({ children }) {
     login,
     signup,
     updateProfile,
+    changePassword,
     logout,
     isAuthenticated: !!user,
   };
