@@ -341,7 +341,7 @@ export default function AuthPage() {
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                 />
-                Remember me
+                Remember Me
               </label>
             )}
 
