@@ -86,7 +86,6 @@ export default function AuthPage() {
     }
 
     if (showsPassword) {
-      const emailName = form.email.split("@")[0].toLowerCase();
       if (!form.password) {
         next.password = "Password is required.";
       } else if (
@@ -101,12 +100,6 @@ export default function AuthPage() {
         COMMON_PASSWORDS.includes(form.password.toLowerCase())
       ) {
         next.password = "Password is too common.";
-      } else if (
-        checksRules &&
-        emailName.length >= 3 &&
-        form.password.toLowerCase().includes(emailName)
-      ) {
-        next.password = "Password must not contain your email.";
       }
     }
 
