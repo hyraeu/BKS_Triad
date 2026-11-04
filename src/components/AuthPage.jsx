@@ -4,13 +4,17 @@ import Field from "./Field";
 import PasswordStrength from "./PasswordStrength";
 import { useAuth } from "../contexts/AuthContext";
 
+const COMMON_PASSWORDS = ["12345678", "1234567890", "password", "qwerty123"];
+
 export default function AuthPage() {
+  // modes: "login" | "signup" | "forgot" | "reset"
   const [mode, setMode] = useState("login");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [form, setForm] = useState({
     name: "",
     email: "",
+    code: "",
     password: "",
     confirmPassword: "",
   });
@@ -18,10 +22,29 @@ export default function AuthPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState(null);
   const [authError, setAuthError] = useState(null);
-  const [rememberMe, setRememberMe] = useState(false);
-  const { login, signup, sessionError } = useAuth();
+  const [resetToken, setResetToken] = useState(null);
+  const { login, signup, forgotPassword, resetPassword, sessionError } =
+    useAuth();
+
   const isSignup = mode === "signup";
+  const isForgot = mode === "forgot";
+  const isReset = mode === "reset";
+  const showsPassword = !isForgot;
+  const showsConfirm = isSignup || isReset;
+  const checksRules = isSignup || isReset;
   const authErrorTimer = useRef(null);
+
+  const titles = {
+    login: "Log In",
+    signup: "Sign Up",
+    forgot: "Forgot Your Password?",
+    reset: "Set A New Password",
+  };
+
+  const subtitles = {
+    forgot: "Enter your email to continue.",
+    reset: "Choose a new password for your account.",
+  };
 
   const clearAuthError = () => {
     if (authErrorTimer.current) clearTimeout(authErrorTimer.current);
@@ -54,39 +77,40 @@ export default function AuthPage() {
       next.name = "Name must be under 40 characters.";
     }
 
-    if (!form.email.trim()) {
-      next.email = "Email is required.";
-    } else if (!/^\S+@\S+\.\S+$/.test(form.email)) {
-      next.email = "Please enter a valid email address.";
+    if (!isReset) {
+      if (!form.email.trim()) {
+        next.email = "Email is required.";
+      } else if (!/^\S+@\S+\.\S+$/.test(form.email)) {
+        next.email = "Please enter a valid email address.";
+      }
     }
 
-    if (!form.password) {
-      next.password = "Password is required.";
-    } else if (
-      isSignup &&
-      (form.password.length < 8 || form.password.length > 16)
-    ) {
-      next.password = "Password must be 8 to 16 characters.";
-    } else if (isSignup && !/[A-Z\d]/.test(form.password)) {
-      next.password = "Use at least one number or capital letter.";
-    } else if (
-      isSignup &&
-      ["12345678", "1234567890", "password", "qwerty123"].includes(
-        form.password.toLowerCase(),
-      )
-    ) {
-      next.password = "Password is too common.";
-    } else if (
-      isSignup &&
-      form.email.split("@")[0].length >= 3 &&
-      form.password
-        .toLowerCase()
-        .includes(form.email.split("@")[0].toLowerCase())
-    ) {
-      next.password = "Password must not contain your email.";
+    if (showsPassword) {
+      const emailName = form.email.split("@")[0].toLowerCase();
+      if (!form.password) {
+        next.password = "Password is required.";
+      } else if (
+        checksRules &&
+        (form.password.length < 8 || form.password.length > 16)
+      ) {
+        next.password = "Password must be 8 to 16 characters.";
+      } else if (checksRules && !/[A-Z\d]/.test(form.password)) {
+        next.password = "Use at least one number or capital letter.";
+      } else if (
+        checksRules &&
+        COMMON_PASSWORDS.includes(form.password.toLowerCase())
+      ) {
+        next.password = "Password is too common.";
+      } else if (
+        checksRules &&
+        emailName.length >= 3 &&
+        form.password.toLowerCase().includes(emailName)
+      ) {
+        next.password = "Password must not contain your email.";
+      }
     }
 
-    if (isSignup) {
+    if (showsConfirm) {
       if (!form.confirmPassword) {
         next.confirmPassword = "Please confirm your password.";
       } else if (form.password !== form.confirmPassword) {
@@ -96,6 +120,26 @@ export default function AuthPage() {
 
     setErrors(next);
     return Object.keys(next).length === 0;
+  };
+
+  const switchMode = (next) => {
+    setMode(next);
+    setErrors({});
+    clearAuthError();
+    setSubmitMessage(null);
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+    if (next === "login" || next === "signup") setResetToken(null);
+
+    if (next === "login" || next === "forgot") {
+      setForm((f) => ({
+        ...f,
+        name: "",
+        code: "",
+        password: "",
+        confirmPassword: "",
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -110,8 +154,12 @@ export default function AuthPage() {
 
     if (isSignup) {
       result = await signup(form.name, form.email, form.password);
+    } else if (isForgot) {
+      result = await forgotPassword(form.email);
+    } else if (isReset) {
+      result = await resetPassword(resetToken, form.password);
     } else {
-      result = await login(form.email, form.password, rememberMe);
+      result = await login(form.email, form.password);
     }
 
     const elapsed = Date.now() - startedAt;
@@ -121,94 +169,107 @@ export default function AuthPage() {
 
     setIsSubmitting(false);
 
-    if (result.success) {
-      setSubmitMessage(
-        isSignup
-          ? "Account Created Successfully!"
-          : "You've Been Signed In.",
-      );
-
-      setForm({ name: "", email: "", password: "", confirmPassword: "" });
-
-      setTimeout(() => setSubmitMessage(null), 3000);
-    } else {
+    if (!result.success) {
       showAuthError(result.error);
+      return;
     }
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    if (isForgot) {
+      // email found: go to the new password step
+      setResetToken(result.resetToken);
+      setMode("reset");
+      setForm((f) => ({ ...f, code: "", password: "", confirmPassword: "" }));
+      return;
+    }
+
+    if (isReset) {
+      // back to the sign in page
+      switchMode("login");
+      setForm({ name: "", email: "", code: "", password: "", confirmPassword: "" });
+      setSubmitMessage("Password Reset Successful. Please Log In.");
+      setTimeout(() => setSubmitMessage(null), 5000);
+      return;
+    }
+
+    setSubmitMessage(
+      isSignup ? "Account Created Successfully!" : "You've Been Signed In.",
+    );
+    setForm({ name: "", email: "", code: "", password: "", confirmPassword: "" });
+    setTimeout(() => setSubmitMessage(null), 3000);
   };
 
-  const switchMode = (next) => {
-    setMode(next);
-    setErrors({});
-    clearAuthError();
-    setSubmitMessage(null);
-
-    if (next === "login") {
-      setForm((f) => ({ ...f, name: "", confirmPassword: "" }));
-    }
-  };
+  const submitLabel = {
+    login: ["Log In", "Logging In..."],
+    signup: ["Create Account", "Creating Account..."],
+    forgot: ["Continue", "Checking..."],
+    reset: ["Reset Password", "Resetting..."],
+  }[mode];
 
   return (
     <main className="auth-page">
       <section className="auth-panel">
-          <h2
-            className="auth-title"
+        <h2 className="auth-title">{titles[mode]}</h2>
+
+        {subtitles[mode] && (
+          <p
+            style={{
+              textAlign: "center",
+              fontSize: "14px",
+              opacity: 0.85,
+              margin: "-4px 0 16px",
+            }}
           >
-            {isSignup ? "Sign Up" : "Log In"}
-          </h2>
+            {subtitles[mode]}
+          </p>
+        )}
 
-          {sessionError && (
-            <div className="auth-message auth-message-error" role="alert">
-              {sessionError}
-            </div>
-          )}
+        {sessionError && (
+          <div className="auth-message auth-message-error" role="alert">
+            {sessionError}
+          </div>
+        )}
 
-          {authError && (
-            <div
-              className="auth-message auth-message-error"
-              role="alert"
+        {authError && (
+          <div className="auth-message auth-message-error" role="alert">
+            {authError}
+            <button
+              type="button"
+              onClick={clearAuthError}
+              aria-label="Dismiss error"
+              className="auth-dismiss"
             >
-              {authError}
-              <button
-                type="button"
-                onClick={clearAuthError}
-                aria-label="Dismiss error"
-                className="auth-dismiss"
-              >
-                <X size={16} />
-              </button>
-            </div>
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
+        {submitMessage && (
+          <div className="auth-message auth-message-success" role="status">
+            {submitMessage}
+          </div>
+        )}
+
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          autoComplete="off"
+          className="auth-form"
+        >
+          {isSignup && (
+            <Field
+              label="Name"
+              type="text"
+              name="fullname_field"
+              value={form.name}
+              onChange={handleChange("name")}
+              error={errors.name}
+              autoComplete="off"
+              maxLength={40}
+              required
+            />
           )}
 
-          {submitMessage && (
-            <div
-              className="auth-message auth-message-success"
-              role="status"
-            >
-              {submitMessage}
-            </div>
-          )}
-
-          <form
-            onSubmit={handleSubmit}
-            noValidate
-            autoComplete="off"
-            className="auth-form"
-          >
-            {isSignup && (
-              <Field
-                label="Name"
-                type="text"
-                name="fullname_field"
-                value={form.name}
-                onChange={handleChange("name")}
-                error={errors.name}
-                autoComplete="off"
-                maxLength={40}
-                required
-              />
-            )}
-
+          {!isReset && (
             <Field
               label="Email"
               type="email"
@@ -219,13 +280,13 @@ export default function AuthPage() {
               autoComplete="off"
               required
             />
+          )}
 
+          {showsPassword && (
             <div>
-              <label
-                htmlFor="password"
-                className="auth-label"
-              >
-                Password <span className="auth-required">*</span>
+              <label htmlFor="password" className="auth-label">
+                {isReset ? "New Password" : "Password"}{" "}
+                <span className="auth-required">*</span>
               </label>
 
               <div className="relative">
@@ -235,7 +296,6 @@ export default function AuthPage() {
                   type={showPassword ? "text" : "password"}
                   value={form.password}
                   onChange={handleChange("password")}
-                  //placeholder={isSignup ? "8-16 Characters" : "••••••••"}
                   autoComplete="new-password"
                   minLength={8}
                   maxLength={16}
@@ -252,6 +312,7 @@ export default function AuthPage() {
                   type="button"
                   onClick={() => setShowPassword((s) => !s)}
                   className="auth-password-toggle"
+                  style={{ color: "#555", opacity: 1 }}
                   aria-label={showPassword ? "Hide Password" : "Show Password"}
                 >
                   {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
@@ -268,110 +329,117 @@ export default function AuthPage() {
                 </p>
               )}
 
-              {isSignup && form.password && (
+              {checksRules && form.password && (
                 <PasswordStrength password={form.password} />
               )}
 
-            </div>
-
-            {isSignup && (
-              <div>
-                <label
-                  htmlFor="confirmPassword"
-                  className="auth-label"
-                >
-                  Confirm Password <span className="auth-required">*</span>
-                </label>
-
-                <div className="relative">
-                  <input
-                    id="confirmPassword"
-                    name="confirm_password_field"
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={form.confirmPassword}
-                    onChange={handleChange("confirmPassword")}
-                    autoComplete="new-password"
-                    minLength={8}
-                    maxLength={16}
-                    aria-invalid={!!errors.confirmPassword}
-                    aria-describedby={
-                      errors.confirmPassword
-                        ? "confirmPassword-error"
-                        : undefined
-                    }
-                    className={`auth-input auth-password-input ${
-                      errors.confirmPassword ? "auth-input-error" : ""
-                    }`}
-                  />
-
+              {mode === "login" && (
+                <div style={{ textAlign: "right", marginTop: "8px" }}>
                   <button
                     type="button"
-                    onClick={() => setShowConfirmPassword((s) => !s)}
-                    className="auth-password-toggle"
-                    aria-label={
-                      showConfirmPassword
-                        ? "Hide Confirmation Password"
-                        : "Show Confirmation Password"
-                    }
+                    onClick={() => switchMode("forgot")}
+                    className="auth-link"
                   >
-                    {showConfirmPassword ? (
-                      <EyeOff size={17} />
-                    ) : (
-                      <Eye size={17} />
-                    )}
+                    Forgot Password?
                   </button>
                 </div>
-
-                {errors.confirmPassword && (
-                  <p
-                    id="confirmPassword-error"
-                    className="auth-field-error"
-                    role="alert"
-                  >
-                    {errors.confirmPassword}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {!isSignup && (
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                />
-                Remember Me
-              </label>
-            )}
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className={`auth-submit ${
-                isSubmitting
-                  ? "auth-submit-disabled"
-                  : ""
-              }`}
-            >
-              {isSubmitting ? (
-                isSignup ? "Creating Account..." : "Logging In..."
-              ) : (
-                isSignup ? "Create Account" : "Log In"
               )}
-            </button>
-          </form>
+            </div>
+          )}
 
-          <p className="auth-switch-prompt">
-            {isSignup ? "Already Have An Account?" : "Need An Account?"}{" "}
-            <button
-              type="button"
-              onClick={() => switchMode(isSignup ? "login" : "signup")}
-              className="auth-link"
-            >
-              {isSignup ? "Log In" : "Sign Up"}
-            </button>
-          </p>
+          {showsConfirm && (
+            <div>
+              <label htmlFor="confirmPassword" className="auth-label">
+                {isReset ? "Confirm New Password" : "Confirm Password"}{" "}
+                <span className="auth-required">*</span>
+              </label>
+
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  name="confirm_password_field"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={form.confirmPassword}
+                  onChange={handleChange("confirmPassword")}
+                  autoComplete="new-password"
+                  minLength={8}
+                  maxLength={16}
+                  aria-invalid={!!errors.confirmPassword}
+                  aria-describedby={
+                    errors.confirmPassword ? "confirmPassword-error" : undefined
+                  }
+                  className={`auth-input auth-password-input ${
+                    errors.confirmPassword ? "auth-input-error" : ""
+                  }`}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((s) => !s)}
+                  className="auth-password-toggle"
+                  style={{ color: "#555", opacity: 1 }}
+                  aria-label={
+                    showConfirmPassword
+                      ? "Hide Confirmation Password"
+                      : "Show Confirmation Password"
+                  }
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff size={17} />
+                  ) : (
+                    <Eye size={17} />
+                  )}
+                </button>
+              </div>
+
+              {errors.confirmPassword && (
+                <p
+                  id="confirmPassword-error"
+                  className="auth-field-error"
+                  role="alert"
+                >
+                  {errors.confirmPassword}
+                </p>
+              )}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={`auth-submit ${
+              isSubmitting ? "auth-submit-disabled" : ""
+            }`}
+          >
+            {isSubmitting ? submitLabel[1] : submitLabel[0]}
+          </button>
+        </form>
+
+        <p className="auth-switch-prompt">
+          {isForgot || isReset ? (
+            <>
+              Remembered Your Password?{" "}
+              <button
+                type="button"
+                onClick={() => switchMode("login")}
+                className="auth-link"
+              >
+                Sign In Here
+              </button>
+            </>
+          ) : (
+            <>
+              {isSignup ? "Already Have An Account?" : "Need An Account?"}{" "}
+              <button
+                type="button"
+                onClick={() => switchMode(isSignup ? "login" : "signup")}
+                className="auth-link"
+              >
+                {isSignup ? "Log In" : "Sign Up"}
+              </button>
+            </>
+          )}
+        </p>
       </section>
     </main>
   );
