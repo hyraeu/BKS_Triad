@@ -4,8 +4,8 @@
   background: #dfd9d8;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --palette-burgundy: #64242f;
-  --palette-red: #b44446;
+  --palette-burgundy: #384466;
+  --palette-red: #384466;
   --palette-coral: #fc8f8f;
   --palette-gray: #dfd9d8;
   --palette-rust: var(--palette-burgundy);
@@ -59,9 +59,7 @@ button {
   align-items: center;
   justify-content: center;
   padding: 48px 20px;
-  background:
-    radial-gradient(ellipse at 10% 12%, rgb(252 143 143 / 32%), transparent 35%),
-    var(--palette-gray);
+  background: linear-gradient(135deg, #5a3c62 0%, #3a6a6b 100%);
 }
 
 .auth-panel {
@@ -115,12 +113,12 @@ button {
 }
 
 .auth-input::placeholder {
-  color: rgb(100 36 47 / 60%);
+  color: rgb(255 255 255 / 75%);
 }
 
 .auth-input:focus {
-  border-color: var(--palette-blue);
-  box-shadow: 0 0 0 3px rgb(180 68 70 / 28%);
+  border-color: white;
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 28%);
 }
 
 .auth-input-error {
@@ -204,8 +202,8 @@ button {
 }
 
 .auth-submit:hover:not(:disabled) {
-  border-color: var(--palette-red);
-  background: var(--palette-red);
+  border-color: #498496;
+  background: #498496;
   color: white;
 }
 
@@ -278,7 +276,7 @@ button {
 }
 
 .strength-weak {
-  background: var(--palette-red);
+  background: #ef4444;
 }
 
 .strength-medium {
@@ -302,9 +300,7 @@ button {
 
 .dashboard-page {
   min-height: 100vh;
-  background:
-    radial-gradient(ellipse at 90% 10%, rgb(180 68 70 / 20%), transparent 36%),
-    var(--palette-gray);
+  background: linear-gradient(135deg, #5a3c62 0%, #3a6a6b 100%);
 }
 
 .dashboard-header {
@@ -318,10 +314,11 @@ button {
 }
 
 .dashboard-tabs {
+  position: relative;
   display: flex;
   gap: 8px;
   padding: 12px clamp(20px, 7vw, 96px) 0;
-  border-bottom: 1px solid var(--palette-burgundy);
+  border-bottom: 5px solid white;
 }
 
 .dashboard-tab {
@@ -329,37 +326,35 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: -1px;
+  margin-bottom: -5px;
   padding: 12px 15px;
-  border: 1px solid transparent;
+  border: 1px solid white;
+  border-bottom-width: 5px;
   background: transparent;
-  color: var(--palette-burgundy);
+  color: white;
   font-size: 14px;
 }
 
-.dashboard-tab:hover {
-  color: var(--palette-burgundy);
+.dashboard-tab:not(.dashboard-tab-active):hover {
+  border-color: white;
+  border-bottom-width: 5px;
+  background: #498496;
+  color: white;
+  z-index: 0;
 }
 
 .dashboard-tab-active {
   border-color: var(--palette-gray);
-  border-bottom-color: var(--palette-burgundy);
+  border-bottom-color: white;
+  border-bottom-width: 5px;
   background: var(--palette-burgundy);
   color: white;
+  z-index: 1;
 }
 
 .dashboard-tab-active:hover {
-  color: white;
-}
-
-.dashboard-tab-active::after {
-  position: absolute;
-  right: 0;
-  bottom: -1px;
-  left: 0;
-  height: 3px;
   background: var(--palette-burgundy);
-  content: "";
+  color: white;
 }
 
 .dashboard-tab:focus-visible {
@@ -390,8 +385,8 @@ button {
 }
 
 .dashboard-logout:hover {
-  border-color: var(--palette-red);
-  background: var(--palette-red);
+  border-color: #498496;
+  background: #498496;
 }
 
 .dashboard-logout:disabled {
@@ -420,9 +415,13 @@ button {
   text-transform: uppercase;
 }
 
+.dashboard-eyebrow {
+  color: white;
+}
+
 .dashboard-title {
   margin: 0;
-  color: var(--palette-burgundy);
+  color: white;
   font-family: var(--font-heading);
   font-size: clamp(36px, 7vw, 58px);
   font-weight: 400;
@@ -461,8 +460,9 @@ button {
   width: 58px;
   height: 58px;
   flex: 0 0 auto;
+  border: 2px solid white;
   border-radius: 50%;
-  background: var(--palette-red);
+  background: #5a3c62;
   color: var(--ink);
   font-family: var(--font-heading);
   font-size: 24px;
@@ -510,12 +510,14 @@ button {
 }
 
 .profile-edit-button:hover {
-  border-color: var(--palette-red);
-  background: var(--palette-red);
+  border-color: #498496;
+  background: #498496;
 }
 
 .profile-cancel-button:hover:not(:disabled) {
-  background: var(--palette-coral);
+  border-color: white;
+  background: #ef4444;
+  color: white;
 }
 
 .profile-edit-form {
@@ -548,8 +550,8 @@ button {
 }
 
 .profile-field input:focus {
-  border-color: var(--palette-blue);
-  box-shadow: 0 0 0 3px rgb(180 68 70 / 28%);
+  border-color: white;
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 28%);
 }
 
 .profile-edit-actions {
@@ -559,14 +561,14 @@ button {
 }
 
 .profile-save-button {
-  border-color: var(--palette-red);
+  border-color: white;
   background: var(--palette-red);
 }
 
 .profile-save-button:hover:not(:disabled) {
-  border-color: var(--palette-coral);
-  background: var(--palette-coral);
-  color: var(--palette-burgundy);
+  border-color: white;
+  background: #3a6a6b;
+  color: white;
 }
 
 .profile-save-button:disabled,
@@ -589,8 +591,8 @@ button {
 }
 
 .profile-feedback-success {
-  border-color: var(--palette-blue);
-  background: rgb(180 68 70 / 22%);
+  border-color: white;
+  background: #3a6a6b;
   color: white;
 }
 
@@ -648,8 +650,9 @@ button {
   width: 42px;
   height: 42px;
   flex: 0 0 auto;
+  border: 2px solid white;
   border-radius: 50%;
-  background: var(--palette-red);
+  background: #5a3c62;
   color: var(--ink);
   font-family: var(--font-heading);
   font-size: 19px;
@@ -684,7 +687,7 @@ button {
 
 .admin-section-title {
   margin: 0;
-  color: var(--palette-burgundy);
+  color: white;
   font-family: var(--font-heading);
   font-size: clamp(36px, 7vw, 58px);
   font-weight: 500;
@@ -692,7 +695,7 @@ button {
 
 .admin-activity-description {
   margin: 8px 0 18px;
-  color: var(--palette-burgundy);
+  color: white;
   font-size: 14px;
 }
 
