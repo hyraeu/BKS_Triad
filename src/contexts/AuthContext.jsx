@@ -41,14 +41,14 @@ export function AuthProvider({ children }) {
     return () => controller.abort();
   }, []);
 
-  const login = async (email, password, rememberMe = false) => {
+  const login = async (email, password) => {
     setSessionError(null);
     try {
       const res = await fetch(`${API_URL}/login`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, rememberMe }),
+        body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -111,27 +111,39 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const changePassword = async (currentPassword, newPassword) => {
+  const forgotPassword = async (email) => {
     try {
-      const response = await fetch(`${API_URL}/auth/password`, {
-        method: "PUT",
+      const res = await fetch(`${API_URL}/forgot-password`, {
+        method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify({ email }),
       });
-      const data = await response.json();
-      if (!response.ok) {
-        return {
-          success: false,
-          error: data.error || "Could Not Change Password.",
-        };
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || "Could Not Verify Email." };
       }
-      return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: "Could Not Connect To Server. Make Sure Backend Is Running.",
-      };
+      return { success: true, resetToken: data.resetToken };
+    } catch (err) {
+      return { success: false, error: "Could Not Connect To Server. Make Sure Backend Is Running." };
+    }
+  };
+
+  const resetPassword = async (resetToken, newPassword) => {
+    try {
+      const res = await fetch(`${API_URL}/reset-password`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resetToken, newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || "Could Not Reset Password." };
+      }
+      return { success: true, message: data.message };
+    } catch (err) {
+      return { success: false, error: "Could Not Connect To Server. Make Sure Backend Is Running." };
     }
   };
 
@@ -154,7 +166,8 @@ export function AuthProvider({ children }) {
     login,
     signup,
     updateProfile,
-    changePassword,
+    forgotPassword,
+    resetPassword,
     logout,
     isAuthenticated: !!user,
   };
