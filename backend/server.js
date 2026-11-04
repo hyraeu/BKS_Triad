@@ -18,6 +18,18 @@ const allowedOriginSet = new Set(allowedOrigins);
 const sessionCookieName = "bks_session";
 const sessionDurationMs = 8 * 60 * 60 * 1000;
 const sessions = new Map();
+const resetTokens = new Map();
+const resetDurationMs = 10 * 60 * 1000;
+
+const COMMON = ["12345678", "1234567890", "password", "qwerty123"];
+
+function validatePassword(pw) {
+  const low = pw.toLowerCase();
+  if (pw.length < 8 || pw.length > 16) return "Password Must Be Between 8 And 16 Characters.";
+  if (!/[A-Z\d]/.test(pw)) return "Password Must Have A Number Or Capital Letter.";
+  if (COMMON.includes(low)) return "Password Is Too Common.";
+  return null;
+}
 
 app.use(
   cors({
@@ -172,6 +184,12 @@ const loginLimiter = rateLimit({
   message: { error: "Too Many Login Attempts. Please Try Again Later." },
 });
 
+const resetLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  message: { error: "Too Many Attempts. Please Try Again Later." },
+});
+
 app.post("/api/signup", async (req, res) => {
   const { name, email, password } = req.body || {};
 
@@ -192,16 +210,16 @@ app.post("/api/signup", async (req, res) => {
   if (!emailRegex.test(normalizedEmail)) {
     return res.status(400).json({ error: "Invalid Email Format." });
   }
-  if (password.length < 8 || password.length > 16) {
-    return res
-      .status(400)
-      .json({ error: "Password Must Be Between 8 And 16 Characters." });
-  }
   if (
     normalizedName.length > 40 ||
     !/^[\p{L}\p{M}\s'‘’\-]+$/u.test(normalizedName)
   ) {
     return res.status(400).json({ error: "Invalid Name." });
+  }
+
+  const passwordError = validatePassword(password);
+  if (passwordError) {
+    return res.status(400).json({ error: passwordError });
   }
 
   const existing = users.find(
@@ -308,6 +326,70 @@ app.put("/api/auth/me", requireAuth, (req, res) => {
 
   logEvent("ACCOUNT_UPDATED", normalizedEmail);
   return res.json({ user: safeUser(user) });
+});
+
+app.post("/api/forgot-password", resetLimiter, (req, res) => {
+  const { email } = req.body || {};
+  const normalizedEmail =
+    typeof email === "string" ? email.trim().toLowerCase() : "";
+  const user = users.find(
+    (entry) => entry.email.toLowerCase() === normalizedEmail,
+  );
+  if (!user) {
+    logEvent("PASSWORD_RESET_FAILED", normalizedEmail);
+    return res
+      .status(404)
+      .json({ error: "No Account Found With That Email." });
+  }
+
+  const now = Date.now();
+  for (const [token, entry] of resetTokens) {
+    if (entry.expiresAt <= now) resetTokens.delete(token);
+  }
+
+  // One-time token that lets this browser reach the "new password" step
+  const resetToken = crypto.randomBytes(32).toString("base64url");
+  resetTokens.set(resetToken, {
+    email: normalizedEmail,
+    expiresAt: now + resetDurationMs,
+  });
+  logEvent("PASSWORD_RESET_REQUESTED", normalizedEmail);
+  return res.json({ resetToken });
+});
+
+app.post("/api/reset-password", resetLimiter, async (req, res) => {
+  const { resetToken, newPassword } = req.body || {};
+  if (typeof resetToken !== "string" || typeof newPassword !== "string") {
+    return res.status(400).json({ error: "All Fields Are Required." });
+  }
+
+  const entry = resetTokens.get(resetToken);
+  const user =
+    entry &&
+    users.find((item) => item.email.toLowerCase() === entry.email);
+  if (!entry || !user || entry.expiresAt <= Date.now()) {
+    resetTokens.delete(resetToken);
+    return res
+      .status(400)
+      .json({ error: "Reset Session Expired. Please Start Again." });
+  }
+
+  const passwordError = validatePassword(newPassword);
+  if (passwordError) {
+    return res.status(400).json({ error: passwordError });
+  }
+
+  user.passwordHash = await bcrypt.hash(newPassword, 10);
+  saveJSON(USERS_FILE, users);
+  resetTokens.delete(resetToken);
+
+  // log the user out everywhere
+  for (const [token, session] of sessions) {
+    if (session.email === entry.email) sessions.delete(token);
+  }
+
+  logEvent("PASSWORD_RESET_SUCCESS", entry.email);
+  return res.json({ message: "Password Reset Successful." });
 });
 
 app.post("/api/logout", (req, res) => {
