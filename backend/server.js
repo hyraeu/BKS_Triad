@@ -21,6 +21,10 @@ const sessions = new Map();
 const resetTokens = new Map();
 const resetDurationMs = 10 * 60 * 1000;
 
+const maxFailedLogins = 5;
+const lockDurationMs = 5 * 60 * 1000;
+const failedLogins = new Map();
+
 const COMMON = ["12345678", "1234567890", "password", "qwerty123"];
 
 function validatePassword(pw) {
@@ -148,6 +152,47 @@ function logEvent(event, email, sessionId) {
   console.log(`[AUDIT] ${event} - ${email} - ${entry.timestamp}`);
 }
 
+// Returns how many minutes are left on a lock (0 means not locked)
+function getLockMinutesLeft(email) {
+  const entry = failedLogins.get(email);
+  if (!entry || !entry.lockedUntil) return 0;
+
+  const remainingMs = entry.lockedUntil - Date.now();
+  if (remainingMs <= 0) {
+    failedLogins.delete(email);
+    return 0;
+  }
+  return Math.ceil(remainingMs / 60000);
+}
+
+// Counts a wrong password. Returns true if this attempt locked the account.
+function recordFailedLogin(email) {
+  const entry = failedLogins.get(email) || { count: 0, lockedUntil: 0 };
+  entry.count += 1;
+
+  let justLocked = false;
+  if (entry.count >= maxFailedLogins) {
+    entry.lockedUntil = Date.now() + lockDurationMs;
+    entry.count = 0;
+    justLocked = true;
+  }
+
+  failedLogins.set(email, entry);
+  return justLocked;
+}
+
+// Logs a failed login and sends the right error response
+function failLogin(res, email) {
+  logEvent("LOGIN_FAILED", email);
+  if (email && recordFailedLogin(email)) {
+    logEvent("ACCOUNT_LOCKED", email);
+    return res.status(429).json({
+      error: "Too Many Failed Attempts. Account Locked For 5 Minutes.",
+    });
+  }
+  return res.status(401).json({ error: "Invalid Email Or Password." });
+}
+
 function getSessionActivity() {
   const activityBySession = new Map();
 
@@ -180,13 +225,13 @@ function getSessionActivity() {
 
 const loginLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 5,
+  max: 10,
   message: { error: "Too Many Login Attempts. Please Try Again Later." },
 });
 
 const resetLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 5,
+  max: 10,
   message: { error: "Too Many Attempts. Please Try Again Later." },
 });
 
@@ -251,20 +296,29 @@ app.post("/api/login", loginLimiter, async (req, res) => {
   const { email, password } = req.body || {};
   const normalizedEmail =
     typeof email === "string" ? email.trim().toLowerCase() : "";
+
+  // Refuse the attempt while the account is locked (even if the password is right)
+  const minutesLeft = normalizedEmail ? getLockMinutesLeft(normalizedEmail) : 0;
+  if (minutesLeft > 0) {
+    logEvent("LOGIN_BLOCKED", normalizedEmail);
+    return res.status(429).json({
+      error: `Account Locked. Try Again In ${minutesLeft} Minute${minutesLeft === 1 ? "" : "s"}.`,
+    });
+  }
+
   const user = users.find(
     (entry) => entry.email.toLowerCase() === normalizedEmail,
   );
   if (!user || typeof password !== "string") {
-    logEvent("LOGIN_FAILED", normalizedEmail);
-    return res.status(401).json({ error: "Invalid Email Or Password." });
+    return failLogin(res, normalizedEmail);
   }
 
   const match = await bcrypt.compare(password, user.passwordHash);
   if (!match) {
-    logEvent("LOGIN_FAILED", normalizedEmail);
-    return res.status(401).json({ error: "Invalid Email Or Password." });
+    return failLogin(res, normalizedEmail);
   }
 
+  failedLogins.delete(normalizedEmail);
   const sessionId = createSession(res, user);
   logEvent("LOGIN_SUCCESS", normalizedEmail, sessionId);
   return res.status(200).json({
@@ -382,6 +436,9 @@ app.post("/api/reset-password", resetLimiter, async (req, res) => {
   user.passwordHash = await bcrypt.hash(newPassword, 10);
   saveJSON(USERS_FILE, users);
   resetTokens.delete(resetToken);
+
+  // a successful reset also clears any login lock on this account
+  failedLogins.delete(entry.email);
 
   // log the user out everywhere
   for (const [token, session] of sessions) {
