@@ -111,6 +111,42 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const forgotPassword = async (email) => {
+    try {
+      const res = await fetch(`${API_URL}/forgot-password`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || "Could Not Verify Email." };
+      }
+      return { success: true, resetToken: data.resetToken };
+    } catch (err) {
+      return { success: false, error: "Could Not Connect To Server. Make Sure Backend Is Running." };
+    }
+  };
+
+  const resetPassword = async (resetToken, newPassword) => {
+    try {
+      const res = await fetch(`${API_URL}/reset-password`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resetToken, newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || "Could Not Reset Password." };
+      }
+      return { success: true, message: data.message };
+    } catch (err) {
+      return { success: false, error: "Could Not Connect To Server. Make Sure Backend Is Running." };
+    }
+  };
+
   const logout = async () => {
     const response = await fetch(`${API_URL}/logout`, {
       method: "POST",
@@ -130,6 +166,8 @@ export function AuthProvider({ children }) {
     login,
     signup,
     updateProfile,
+    forgotPassword,
+    resetPassword,
     logout,
     isAuthenticated: !!user,
   };
