@@ -23,13 +23,11 @@ const resetDurationMs = 10 * 60 * 1000;
 
 const COMMON = ["12345678", "1234567890", "password", "qwerty123"];
 
-function validatePassword(pw, name, email) {
+function validatePassword(pw) {
   const low = pw.toLowerCase();
-  const user = email.split("@")[0].toLowerCase();
   if (pw.length < 8 || pw.length > 16) return "Password Must Be Between 8 And 16 Characters.";
   if (!/[A-Z\d]/.test(pw)) return "Password Must Have A Number Or Capital Letter.";
   if (COMMON.includes(low)) return "Password Is Too Common.";
-  if (user.length >= 3 && low.includes(user)) return "Password Must Not Contain Your Email.";
   return null;
 }
 
@@ -219,11 +217,7 @@ app.post("/api/signup", async (req, res) => {
     return res.status(400).json({ error: "Invalid Name." });
   }
 
-  const passwordError = validatePassword(
-    password,
-    normalizedName,
-    normalizedEmail,
-  );
+  const passwordError = validatePassword(password);
   if (passwordError) {
     return res.status(400).json({ error: passwordError });
   }
@@ -380,7 +374,7 @@ app.post("/api/reset-password", resetLimiter, async (req, res) => {
       .json({ error: "Reset Session Expired. Please Start Again." });
   }
 
-  const passwordError = validatePassword(newPassword, user.name, user.email);
+  const passwordError = validatePassword(newPassword);
   if (passwordError) {
     return res.status(400).json({ error: passwordError });
   }
