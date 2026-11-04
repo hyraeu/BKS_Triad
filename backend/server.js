@@ -18,8 +18,8 @@ const allowedOriginSet = new Set(allowedOrigins);
 const sessionCookieName = "bks_session";
 const sessionDurationMs = 8 * 60 * 60 * 1000;
 const sessions = new Map();
-
-const rememberDurationMs = 30 * 24 * 60 * 60 * 1000; // 30 days
+const resetTokens = new Map();
+const resetDurationMs = 10 * 60 * 1000;
 
 const COMMON = ["12345678", "1234567890", "password", "qwerty123"];
 
@@ -87,19 +87,18 @@ function getCookies(req) {
   );
 }
 
-function cookieOptions(maxAge = sessionDurationMs) {
+function cookieOptions() {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
     path: "/api",
-    maxAge,
+    maxAge: sessionDurationMs,
   };
 }
 
-function createSession(res, user, rememberMe = false) {
+function createSession(res, user) {
   const now = Date.now();
-  const duration = rememberMe ? rememberDurationMs : sessionDurationMs;
   for (const [token, session] of sessions) {
     if (session.expiresAt <= now) sessions.delete(token);
   }
@@ -108,10 +107,10 @@ function createSession(res, user, rememberMe = false) {
   const sessionId = crypto.randomUUID();
   sessions.set(token, {
     email: user.email.toLowerCase(),
-    expiresAt: now + duration,
+    expiresAt: now + sessionDurationMs,
     sessionId,
   });
-  res.cookie(sessionCookieName, token, cookieOptions(duration));
+  res.cookie(sessionCookieName, token, cookieOptions());
   return sessionId;
 }
 
@@ -187,6 +186,12 @@ const loginLimiter = rateLimit({
   message: { error: "Too Many Login Attempts. Please Try Again Later." },
 });
 
+const resetLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  message: { error: "Too Many Attempts. Please Try Again Later." },
+});
+
 app.post("/api/signup", async (req, res) => {
   const { name, email, password } = req.body || {};
 
@@ -249,7 +254,7 @@ app.post("/api/signup", async (req, res) => {
 });
 
 app.post("/api/login", loginLimiter, async (req, res) => {
-  const { email, password, rememberMe } = req.body || {};
+  const { email, password } = req.body || {};
   const normalizedEmail =
     typeof email === "string" ? email.trim().toLowerCase() : "";
   const user = users.find(
@@ -266,7 +271,7 @@ app.post("/api/login", loginLimiter, async (req, res) => {
     return res.status(401).json({ error: "Invalid Email Or Password." });
   }
 
-  const sessionId = createSession(res, user, rememberMe === true);
+  const sessionId = createSession(res, user);
   logEvent("LOGIN_SUCCESS", normalizedEmail, sessionId);
   return res.status(200).json({
     message: "Login Successful.",
@@ -327,6 +332,70 @@ app.put("/api/auth/me", requireAuth, (req, res) => {
 
   logEvent("ACCOUNT_UPDATED", normalizedEmail);
   return res.json({ user: safeUser(user) });
+});
+
+app.post("/api/forgot-password", resetLimiter, (req, res) => {
+  const { email } = req.body || {};
+  const normalizedEmail =
+    typeof email === "string" ? email.trim().toLowerCase() : "";
+  const user = users.find(
+    (entry) => entry.email.toLowerCase() === normalizedEmail,
+  );
+  if (!user) {
+    logEvent("PASSWORD_RESET_FAILED", normalizedEmail);
+    return res
+      .status(404)
+      .json({ error: "No Account Found With That Email." });
+  }
+
+  const now = Date.now();
+  for (const [token, entry] of resetTokens) {
+    if (entry.expiresAt <= now) resetTokens.delete(token);
+  }
+
+  // One-time token that lets this browser reach the "new password" step
+  const resetToken = crypto.randomBytes(32).toString("base64url");
+  resetTokens.set(resetToken, {
+    email: normalizedEmail,
+    expiresAt: now + resetDurationMs,
+  });
+  logEvent("PASSWORD_RESET_REQUESTED", normalizedEmail);
+  return res.json({ resetToken });
+});
+
+app.post("/api/reset-password", resetLimiter, async (req, res) => {
+  const { resetToken, newPassword } = req.body || {};
+  if (typeof resetToken !== "string" || typeof newPassword !== "string") {
+    return res.status(400).json({ error: "All Fields Are Required." });
+  }
+
+  const entry = resetTokens.get(resetToken);
+  const user =
+    entry &&
+    users.find((item) => item.email.toLowerCase() === entry.email);
+  if (!entry || !user || entry.expiresAt <= Date.now()) {
+    resetTokens.delete(resetToken);
+    return res
+      .status(400)
+      .json({ error: "Reset Session Expired. Please Start Again." });
+  }
+
+  const passwordError = validatePassword(newPassword, user.name, user.email);
+  if (passwordError) {
+    return res.status(400).json({ error: passwordError });
+  }
+
+  user.passwordHash = await bcrypt.hash(newPassword, 10);
+  saveJSON(USERS_FILE, users);
+  resetTokens.delete(resetToken);
+
+  // log the user out everywhere
+  for (const [token, session] of sessions) {
+    if (session.email === entry.email) sessions.delete(token);
+  }
+
+  logEvent("PASSWORD_RESET_SUCCESS", entry.email);
+  return res.json({ message: "Password Reset Successful." });
 });
 
 app.post("/api/logout", (req, res) => {
