@@ -122,17 +122,10 @@ export default function AuthPage() {
     setSubmitMessage(null);
     setShowPassword(false);
     setShowConfirmPassword(false);
-    if (next === "login" || next === "signup") setResetToken(null);
+    setResetToken(null);
 
-    if (next === "login" || next === "forgot") {
-      setForm((f) => ({
-        ...f,
-        name: "",
-        code: "",
-        password: "",
-        confirmPassword: "",
-      }));
-    }
+    // clear every field so nothing carries over to the other page
+    setForm({ name: "", email: "", code: "", password: "", confirmPassword: "" });
   };
 
   const handleSubmit = async (e) => {
