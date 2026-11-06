@@ -133,7 +133,8 @@ export default function Dashboard({ user, onLogout, onUpdateProfile }) {
     setProfileSaving(true);
 
     try {
-      const result = await onUpdateProfile(profileName, profileEmail);
+      // the email is locked, so always send the current one
+      const result = await onUpdateProfile(profileName, user.email);
       if (!result.success) {
         setProfileError(result.error);
         return;
@@ -242,7 +243,7 @@ export default function Dashboard({ user, onLogout, onUpdateProfile }) {
                   }}
                 >
                   <Pencil size={15} aria-hidden="true" />
-                  <span>Edit Details</span>
+                  <span>Edit Name</span>
                 </button>
               )}
             </div>
@@ -262,9 +263,14 @@ export default function Dashboard({ user, onLogout, onUpdateProfile }) {
                 <label className="profile-field">
                   <span>Email</span>
                   <input
-                    autoComplete="email"
-                    onChange={(event) => setProfileEmail(event.target.value)}
-                    required
+                    disabled
+                    readOnly
+                    style={{
+                      backgroundColor: "#d1d5db",
+                      color: "#6b7280",
+                      cursor: "not-allowed",
+                    }}
+                    title="Email cannot be changed"
                     type="email"
                     value={profileEmail}
                   />
